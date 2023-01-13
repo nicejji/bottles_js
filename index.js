@@ -1,162 +1,112 @@
-const BLOCK_SYM = '▊';
-
-
-const COLORS = {
-  RED: '\u001b[31m',
-  GREEN: '\u001b[32m',
-  YELLOW: '\u001b[33m',
-  BLUE: '\u001b[34m',
-  MAGENTA: '\u001b[35m',
-  CYAN: '\u001b[36m',
-}
-
-
-RU_MESSAGE_PACK = {
-  COLORS_UNMATCH: '🌈 Цвета бутылочек не совпадают.',
-  MOVE_OVERFLOW: '🔢 Введите 2 цифры (откуда, куда).',
-  NOT_A_NUMBER: '🔢 Введите 2 цифры в формате XX.',
-  WRONG_BOTTLE: '🤨 Такой бутылочки нету на поле.',
-  EMPTY_BOTTLE: '🫙 Бутылочка пуста, переливать не от куда.',
-  FULL_BOTTLE: '🍾 Бутылочка для заливки уже полна.',
-  MOVE_PROMPT: '😎 Введите свой ход: ',
-  WIN_MESSAGE: '🏆 Ты крут! Все по местам.',
-}
-
-EN_MESSAGE_PACK = {
-  COLORS_UNMATCH: '🌈 Bottles color do not match.',
-  MOVE_OVERFLOW: '🔢 Enter 2 digits.',
-  NOT_A_NUMBER: '🔢 Only digits allowed.',
-  WRONG_BOTTLE: '🤨 No bottle with such index there.',
-  EMPTY_BOTTLE: '🫙 Bottle from is empty, nothing to fill.',
-  FULL_BOTTLE: '🍾 Bottle to is already full.',
-  MOVE_PROMPT: '😎 Your move: ',
-  WIN_MESSAGE: '🏆 You are legend! All things sorted.',
-}
-
-const colorize = (color, str) => `${color}${str}${'\u001b[0m'}`;
-
-
-const createBlocks = (colors, blockSym) => 
-  colors.map(color => colorize(color, blockSym));
-
-
-const shuffle = arr => {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-
-const createBottles = (blockTypes, bottleSize, emptyBottlesCount) => {
-  const blocks = shuffle(
-    blockTypes.map(block => Array(bottleSize).fill(block)).flat()
-  );
-  const bottles = Array(blockTypes.length).fill(null).map(
-    _ => Array(bottleSize).fill(null).map(
-      _ => blocks.pop()
-    )
-  );
-  for (let i = 0; i < emptyBottlesCount; i++) bottles.push([]);
-  return bottles
-}
-
-
-class Game {
-
-  constructor (blockTypes, bottleSize, emptyBottlesCount, message_pack) {
-    this.message_pack = message_pack
-    this.bottleSize = bottleSize;
-    this.bottles = createBottles(blockTypes, bottleSize, emptyBottlesCount);
-  }
-    
-
-  parseMove(str) {
-    const maxIndex = this.bottles.length;
-    if (str.trim().length !== 2) throw new Error(this.message_pack.MOVE_OVERFLOW);
-    const [from, to] = str.trim().split('').map(n => parseInt(n - 1));
-    if (isNaN(from) || isNaN(to)) throw new Error(this.message_pack.NOT_A_NUMBER);
-    if (from >= maxIndex || to >= maxIndex) throw new Error(this.message_pack.WRONG_BOTTLE);
-    return [from, to];
-  }
-
-
-  move (from, to) {
-    const fromLastBlock = this.bottles[from].slice(-1)[0];
-    const toLastBlock = this.bottles[to].slice(-1)[0];
-    if (fromLastBlock === undefined) throw new Error(this.message_pack.EMPTY_BOTTLE);
-    if (toLastBlock !== undefined && toLastBlock !== fromLastBlock) {
-      throw new Error(this.message_pack.COLORS_UNMATCH)
+// shuffles array elements with Fisher-Yates algorithm
+var shuffle = function (arr) {
+    var _a;
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        _a = [arr[j], arr[i]], arr[i] = _a[0], arr[j] = _a[1];
+    }
+};
+// Is last block can be moved from bottle `from` to bottle `to`
+var match = function (from, to, size) {
+    return from.length !== 0 && to.length !== size &&
+        (to.length === 0 || to.slice(-1)[0] === from.slice(-1)[0]);
+};
+// Moves blocks from bottle to bootle while it can be performed according
+// to `match` function
+var transfuse = function (from, to, size) {
+    var moved = 0;
+    while (match(from, to, size)) {
+        to.push(from.pop());
+        moved++;
+    }
+    ;
+    return moved;
+};
+// Generete array of randomly fullfilled bottles of `size`
+var generateBottles = function (blockTypes, size, empty) {
+    var blocks = blockTypes.map(function (b) { return Array(size).fill(b); }).flat();
+    shuffle(blocks);
+    var bottles = Array(blockTypes.length).fill(null).map(function (_) { return Array(size).fill(null).map(function (_) { return blocks.pop(); }); });
+    for (var i = 0; i < empty; i++)
+        bottles.push([]);
+    return bottles;
+};
+// Checks if all bottles contains equal blocks (win condition)
+var isBottleSorted = function (bottles, size) {
+    var _loop_1 = function (bottle) {
+        if (bottle.length > 0 && bottle.length < size)
+            return { value: false };
+        if (!bottle.every(function (v) { return v === bottle[0]; }))
+            return { value: false };
     };
-    if (this.bottles[to].length >= this.bottleSize) throw new Error(this.message_pack.FULL_BOTTLE);
-    for (let block of [...this.bottles[from]].reverse()) {
-      if (this.bottles[to].length < this.bottleSize && block === fromLastBlock) {
-        this.bottles[to].push(this.bottles[from].pop());
-      }
-      else {
-        break;
-      }
-    }
-  }
-
-
-  printBottles () {
-    const mask = sym => `${sym === undefined ? '-' : sym}\t`
-    for (let j = this.bottleSize - 1; j >= 0; j--) {
-      for (let i = 0; i < this.bottles.length; i++) {
-        process.stdout.write(mask(this.bottles[i][j]))
-      }
-      process.stdout.write('\n')
-    }
-    this.bottles.forEach((_, i) => process.stdout.write(mask(i + 1)))
-    process.stdout.write('\n')
-  }
-
-  
-  checkWin () {
-    for (const bottle of this.bottles) {
-      if (bottle.length > 0 && bottle.length < this.bottleSize) return false;
-      if (!bottle.every(v => v === bottle[0])) return false;
+    for (var _i = 0, bottles_1 = bottles; _i < bottles_1.length; _i++) {
+        var bottle = bottles_1[_i];
+        var state_1 = _loop_1(bottle);
+        if (typeof state_1 === "object")
+            return state_1.value;
     }
     return true;
-  }
-
-
-  run () {
+};
+// get fancy formated string representation of bottles array
+var formatBottles = function (bottles, size) {
+    var text = '';
+    var mask = function (s) { return "".concat(s === undefined ? '-' : s, "\t"); };
+    for (var j = size - 1; j >= 0; j--) {
+        for (var i = 0; i < bottles.length; i++) {
+            text += mask(bottles[i][j]);
+        }
+        text += '\n';
+    }
+    bottles.forEach(function (_, i) { return text += mask(i + 1); });
+    text += '\n';
+    return text;
+};
+// parse move from 2 digit string
+var parseMove = function (str, maxIndex) {
+    str = str.trim();
+    var _a = str.split('').map(function (n) { return parseInt(n) - 1; }), from = _a[0], to = _a[1];
+    if (isNaN(from) || isNaN(to))
+        return null;
+    if (from > maxIndex || to > maxIndex)
+        return null;
+    return [from, to];
+};
+// game sample in cli
+var cli_game = function () {
+    var args = process.argv.slice(2);
+    var SIZE;
+    var EMPTY;
+    var TYPES;
+    try {
+        TYPES = JSON.parse(args[0]);
+        SIZE = parseInt(args[1]);
+        EMPTY = parseInt(args[2]);
+    }
+    catch (e) {
+        console.log('Invalid args!');
+        process.exit();
+    }
+    var MAX_INDEX = TYPES.length + EMPTY - 1;
+    var bottles = generateBottles(TYPES, SIZE, EMPTY);
     console.clear();
-    this.printBottles();
-    process.stdout.write(this.message_pack.MOVE_PROMPT)
-
-    process.stdin.on('data', data => {
-      console.clear();
-      try {
-        const [from, to] = this.parseMove(data.toString());
-        this.move(from, to);
-        this.printBottles();
-        if (this.checkWin()) {
-          process.stdout.write(colorize(COLORS.GREEN, this.message_pack.WIN_MESSAGE + '\n'));
-          process.exit();
+    console.log(process.argv);
+    console.log(formatBottles(bottles, SIZE));
+    console.log('Your next move:');
+    process.stdin.on('data', function (data) {
+        console.clear();
+        var move = parseMove(data.toString(), MAX_INDEX);
+        if (move !== null) {
+            var from = move[0], to = move[1];
+            transfuse(bottles[from], bottles[to], SIZE);
+        }
+        if (isBottleSorted(bottles, SIZE)) {
+            console.log('You won!');
+            process.exit();
         }
         else {
+            console.log(formatBottles(bottles, SIZE));
+            console.log('Your next move:');
         }
-      }
-      catch (e) {
-        this.printBottles();
-        process.stdout.write(colorize(COLORS.YELLOW, `\t${e.message}\n\n`));
-      }
-      process.stdout.write(this.message_pack.MOVE_PROMPT);
-    })
-  }
-
-
-}
-
-
-const blockTypes = Object.entries(COLORS).map(
-  ([key, value]) => colorize(value, `${BLOCK_SYM}${key[0]}${BLOCK_SYM}`)
-).slice(0, 4)
-
-const game = new Game(blockTypes, 10, 2, EN_MESSAGE_PACK);
-game.run();
+    });
+};
+cli_game();
