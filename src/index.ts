@@ -1,4 +1,3 @@
-// shuffles array elements with Fisher-Yates algorithm
 const shuffle = (arr: any[]) => {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -6,28 +5,19 @@ const shuffle = (arr: any[]) => {
   }
 };
 
-// Is last block can be moved from bottle `from` to bottle `to`
-const match = <T,>(from: T[], to: T[], size: number): boolean => 
-  from.length !== 0 && to.length !== size && 
+const matchBottles = <T,>(from: T[], to: T[], bottleSize: number): boolean => 
+  from.length !== 0 && to.length !== bottleSize && 
     (to.length === 0 || to.slice(-1)[0] === from.slice(-1)[0]);
 
-// Moves blocks from bottle to bootle while it can be performed according
-// to `match` function
-const transfuse = <T,>(from: T[], to: T[], size: number): number => {
-  let moved = 0;
-  while (match(from, to, size)) {
-    to.push(from.pop() as T)
-    moved++;
-  };
-  return moved;
+const transfuseBottles = <T,>(from: T[], to: T[], bottleSize: number) => {
+  while (matchBottles(from, to, bottleSize)) to.push(from.pop() as T);
 };
 
-// returns availableMoves
-const availableMoves = <T,>(bottles: T[][], size: number): number[][] => {
-  const moves: number[][] = [];
+const availableMoves = <T,>(bottles: T[][], bottleSize: number): number[][] => {
+  const moves = [];
   for (let i = 0; i < bottles.length; i++) {
     for (let j = 0; j < bottles.length; j++) {
-      if (i !== j && match(bottles[i], bottles[j], size)) {
+      if (i !== j && matchBottles(bottles[i], bottles[j], bottleSize)) {
         moves.push([i, j])
       }
     }
@@ -35,38 +25,31 @@ const availableMoves = <T,>(bottles: T[][], size: number): number[][] => {
   return moves
 }
 
-// Generete array of randomly fullfilled bottles of `size`
-const generateBottles = <T,>(blockTypes: T[], 
-                             size: number, 
-                             empty: number): T[][] => {
-  const blocks = blockTypes.map(b => Array(size).fill(b)).flat();
+// Generate array of randomly fullfilled bottles of `bottleSize`
+const generateBottles = <T,>(blockTypes: T[], bottleSize: number): T[][] => {
+  const blocks = blockTypes.map(b => Array(bottleSize).fill(b)).flat();
   shuffle(blocks);
-  const bottles = Array(blockTypes.length).fill(null).map(
-    _ => Array(size).fill(null).map(
-      _ => blocks.pop()
-    )
+  return Array(blockTypes.length).fill(null).map(
+    _ => Array(bottleSize).fill(null).map(_ => blocks.pop())
   )
-  for (let i = 0; i < empty; i++) bottles.push([]);
-  return bottles;
 };
 
 // Checks if all bottles contains equal blocks (win condition)
-const isBottleSorted = <T,>(bottles: T[][], size: number): boolean => {
+const isBottlesSorted = <T,>(bottles: T[][], bottleSize: number): boolean => {
     for (const bottle of bottles) {
-      if (bottle.length > 0 && bottle.length < size) return false;
-      if (!bottle.every(v => v === bottle[0])) return false;
+      const len = bottle.length
+      if ((len > 0 && len < bottleSize) || 
+          (!bottle.every(v => v === bottle[0]))) return false;
     }
     return true;
 }
 
 // get fancy formated string representation of bottles array
-const formatBottles = <T,>(bottles: T[][], size: number): string => {
+const formatBottles = <T,>(bottles: T[][], bottleSize: number): string => {
   let text = '';
-  const mask = (s: any) => `${s === undefined ? '-' : s}\t`;
-  for (let j = size - 1; j >= 0; j--) {
-    for (let i = 0; i < bottles.length; i++) {
-      text += mask(bottles[i][j]);
-    }
+  const mask = (v: any) => `${v === undefined ? '-' : v}\t`;
+  for (let j = bottleSize - 1; j >= 0; j--) {
+    for (let i = 0; i < bottles.length; i++) text += mask(bottles[i][j]);
     text += '\n';
   }
   bottles.forEach((_, i) => text += mask(i + 1));
@@ -75,31 +58,28 @@ const formatBottles = <T,>(bottles: T[][], size: number): string => {
 }
 
 // parse move from 2 digit string
-const parseMove = (str: string, maxIndex: number): number[] | null => {
-    str = str.trim()
-    const [from, to] = str.split('').map(n => parseInt(n) - 1);
-    if (isNaN(from) || isNaN(to)) return null;
-    if (from > maxIndex || to > maxIndex) return null;
+const parseMove = (str: string, maxIndex: number): number[] => {
+    const [from, to] = str.trim().split('').map(n => parseInt(n) - 1);
+    if (isNaN(from) || isNaN(to) || from > maxIndex || to > maxIndex) {
+      throw new Error();
+    }
     return [from, to];
 }
 
 // game sample in cli
-const cli_game = <T,>(size: number, empty: number, types: T[]) => {
-  const bottles = generateBottles(types, size, empty);
+const cli_game = <T,>(bottleSize: number, empty: number, types: T[]) => {
+  const bottles = generateBottles(types, bottleSize).concat([[],[]]);
   const max_index = types.length + empty - 1;
-
   const showState = () => {
     console.clear();
-    console.log(formatBottles(bottles, size));
+    console.log(formatBottles(bottles, bottleSize));
     console.log(`Available moves: ${
-      availableMoves(bottles, size).map(v => `${v[0] + 1} -> ${v[1] + 1}`)
+      availableMoves(bottles, bottleSize).map(v => `${v[0] + 1} -> ${v[1] + 1}`)
       .join(" | ")
     }`);
-    console.log('Your move (FT)? :');
+    console.log('Your move (FT) ? :');
   };
-  
   showState();
-
   console.log(
 `
 \n
@@ -111,7 +91,7 @@ const cli_game = <T,>(size: number, empty: number, types: T[]) => {
 
 ---\tHOW TO PLAY
 ---\tAt each step enter two digits FT, where F - index of bottle from,
----\tT - index of bottle to, you wanna to 'transfuse' blocks.
+---\tT - index of bottle to, you wanna to 'transfuseBottles' blocks.
 
 ---\tCUSTOMIZATION
 ---\tAlso you can edit constants at the end of source code file :)
@@ -119,20 +99,19 @@ const cli_game = <T,>(size: number, empty: number, types: T[]) => {
 \n
 `
 )
-
   process.stdin.on('data', data => {
-    const move = parseMove(data.toString(), max_index);
-    if (move !== null) {
-      const [from, to] = move;
-      transfuse(bottles[from], bottles[to], size);
+    try {
+      const [from, to] = parseMove(data.toString(), max_index);
+      transfuseBottles(bottles[from], bottles[to], bottleSize);
+      showState();
+      if (isBottlesSorted(bottles, bottleSize)) {
+        console.log('You won!');
+        process.exit();
+      } 
     }
-
-    showState();
-
-    if (isBottleSorted(bottles, size)) {
-      console.log('You won!');
-      process.exit();
-    } 
+    catch {
+      console.log('Invalid move!')
+    }
   })
 }
 
