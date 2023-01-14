@@ -22,6 +22,19 @@ const transfuse = <T,>(from: T[], to: T[], size: number): number => {
   return moved;
 };
 
+// returns availableMoves
+const availableMoves = <T,>(bottles: T[][], size: number): number[][] => {
+  const moves: number[][] = [];
+  for (let i = 0; i < bottles.length; i++) {
+    for (let j = 0; j < bottles.length; j++) {
+      if (i !== j && match(bottles[i], bottles[j], size)) {
+        moves.push([i, j])
+      }
+    }
+  }
+  return moves
+}
+
 // Generete array of randomly fullfilled bottles of `size`
 const generateBottles = <T,>(blockTypes: T[], 
                              size: number, 
@@ -71,46 +84,60 @@ const parseMove = (str: string, maxIndex: number): number[] | null => {
 }
 
 // game sample in cli
-const cli_game = () => {
-  const args = process.argv.slice(2);
-  let SIZE: number;
-  let EMPTY: number;
-  let TYPES: any[];
+const cli_game = <T,>(size: number, empty: number, types: T[]) => {
+  const bottles = generateBottles(types, size, empty);
+  const max_index = types.length + empty - 1;
 
-  try {
-    TYPES = JSON.parse(args[0]) as any[]
-    SIZE = parseInt(args[1]) > 0 ? parseInt(args[1]) : 10
-    EMPTY = parseInt(args[2]) > 0 ? parseInt(args[22]) : 2
-  }
-  catch (e) {
-    console.log('Invalid args!')
-    process.exit()
-  }
+  const showState = () => {
+    console.clear();
+    console.log(formatBottles(bottles, size));
+    console.log(`Available moves: ${
+      availableMoves(bottles, size).map(v => `${v[0] + 1} -> ${v[1] + 1}`)
+      .join(" | ")
+    }`);
+    console.log('Your move (FT)? :');
+  };
+  
+  showState();
 
-  const MAX_INDEX = TYPES.length + EMPTY - 1;
-  const bottles = generateBottles(TYPES, SIZE, EMPTY);
+  console.log(
+`
+\n
+---\tThis is "Water Sort Game" CLI implementation
 
-  console.clear();
-  console.log(process.argv)
-  console.log(formatBottles(bottles, SIZE));
-  console.log('Your next move:');
+---\tRULES
+---\tYou can only pour blocks if it is linked to the same symbol,
+---\tand there enough space.
+
+---\tHOW TO PLAY
+---\tAt each step enter two digits FT, where F - index of bottle from,
+---\tT - index of bottle to, you wanna to 'transfuse' blocks.
+
+---\tCUSTOMIZATION
+---\tAlso you can edit constants at the end of source code file :)
+---\tHave a fun!
+\n
+`
+)
 
   process.stdin.on('data', data => {
-    console.clear();
-    const move = parseMove(data.toString(), MAX_INDEX);
+    const move = parseMove(data.toString(), max_index);
     if (move !== null) {
       const [from, to] = move;
-      transfuse(bottles[from], bottles[to], SIZE);
+      transfuse(bottles[from], bottles[to], size);
     }
-    if (isBottleSorted(bottles, SIZE)) {
+
+    showState();
+
+    if (isBottleSorted(bottles, size)) {
       console.log('You won!');
       process.exit();
     } 
-    else {
-      console.log(formatBottles(bottles, SIZE))
-      console.log('Your next move:');
-    }
   })
 }
 
-cli_game();
+// starting game
+const SIZE = 10;
+const EMPTY = 2;
+const TYPES = ['🍎', '🍊', '🍌', '🥝', '🫐'];
+cli_game(SIZE, EMPTY, TYPES);
