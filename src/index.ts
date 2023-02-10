@@ -25,16 +25,13 @@ const availableMoves = <T,>(bottles: T[][], bottleSize: number): number[][] => {
   return moves
 }
 
-// Generate array of randomly fullfilled bottles of `bottleSize`
 const generateBottles = <T,>(blockTypes: T[], bottleSize: number): T[][] => {
   const blocks = blockTypes.map(b => Array(bottleSize).fill(b)).flat();
   shuffle(blocks);
-  return Array(blockTypes.length).fill(null).map(
-    _ => Array(bottleSize).fill(null).map(_ => blocks.pop())
-  )
+  return Array.from({length: blockTypes.length}, _ => 
+    Array.from({length: bottleSize}, _ => blocks.pop()));
 };
 
-// Checks if all bottles contains equal blocks (win condition)
 const isBottlesSorted = <T,>(bottles: T[][], bottleSize: number): boolean => {
     for (const bottle of bottles) {
       const len = bottle.length
@@ -44,7 +41,6 @@ const isBottlesSorted = <T,>(bottles: T[][], bottleSize: number): boolean => {
     return true;
 }
 
-// get fancy formated string representation of bottles array
 const formatBottles = <T,>(bottles: T[][], bottleSize: number): string => {
   let text = '';
   const mask = (v: any) => `${v === undefined ? '-' : v}\t`;
@@ -57,7 +53,6 @@ const formatBottles = <T,>(bottles: T[][], bottleSize: number): string => {
   return text;
 }
 
-// parse move from 2 digit string
 const parseMove = (str: string, maxIndex: number): number[] => {
     const [from, to] = str.trim().split('').map(n => parseInt(n) - 1);
     if (isNaN(from) || isNaN(to) || from > maxIndex || to > maxIndex) {
@@ -66,7 +61,6 @@ const parseMove = (str: string, maxIndex: number): number[] => {
     return [from, to];
 }
 
-// game sample in cli
 const cli_game = <T,>(bottleSize: number, empty: number, types: T[]) => {
   const bottles = generateBottles(types, bottleSize).concat([[],[]]);
   const max_index = types.length + empty - 1;
