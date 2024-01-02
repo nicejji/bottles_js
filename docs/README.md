@@ -1,9 +1,10 @@
 # bottles_js
-> Water Sort Game CLI implementation written in TS.
 
-<img src="media/demo.gif" width="500"/>
+> Water Sort Game CLI implementation written in Typescript.
+
+![demo](./demo.gif)
 
 ## Installation
+
 - cd into project folder
-- install deps and build project with `npm install && npm run build`
-- to run use `npm run start` command
+- run it with `bun .` or compile typscript and run `index.js`
